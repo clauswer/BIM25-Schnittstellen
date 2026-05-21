@@ -4,7 +4,7 @@ Schreiben Sie ein Programm, mit dem man über die SRU Schnittstelle im GBV nach 
 
 Ausgabe: ISBN, Autor, Titel, Schlagworte 
 
-Quelle: https://verbundwiki.gbv.de/display/VZG/SRU 
+Quelle: https://verbundwiki.gbv.de/display/VZG/SRU -> https://wiki.k10plus.de/spaces/K10PLUS/pages/27361342/SRU
 
 # Aufgabe 2 
 

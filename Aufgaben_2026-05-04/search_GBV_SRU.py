@@ -15,14 +15,13 @@ ISBN, Autor, Titel, Schlagworte
 
 authors: Beata Lakenberg, Sebastian Scherübl, Claus Werner
 license: MIT License
+version: 0.9
+date: 2026-05-04
 """
 
 import requests
 import sys
 import xml.etree.ElementTree as ET
-# TODO: lxml statt xml nutzen?
-
-anzeigefelder = {"Titel": {"tag": "245", "code": "a"}, "Autor": {"tag": "100", "code": "a"}, "ISBN": {"tag": "020", "code": "a"}, "Schlagworte": {"tag": "650", "code": "a"}}
 
 
 def search_gbv_sru(
@@ -50,12 +49,7 @@ def search_gbv_sru(
     Returns:
         str: das als `recordSchema` angegebene Ausgabeformat (default MARC21-XML)  
     """
-    # TODO:
-    # statt `opac-de-627` als Datenbank `gvk` nehmen für GVK-GBV-Katalog (vgl. https://uri.gbv.de/database/) ?
-    # Sortierung: s. https://wiki.k10plus.de/spaces/K10PLUS/pages/27361342/SRU#SRU-Sortierung
-
-    # TODO: searchField auf die Werte `pica.tit` für Titelstichwörter, `dc.author` für Autoren (oder pica.per? pica.psw?) und `pica.isb` für ISBN begrenzen
-
+    
     gbv_sru_url = f"https://sru.k10plus.de/{database}?version=1.1&operation=searchRetrieve&query={searchField}%3D{searchValue}&maximumRecords={maximumRecords}&recordSchema={recordSchema}"
 
     try:
@@ -67,36 +61,48 @@ def search_gbv_sru(
     return response.text
 
 
-def show_display_fields(marc_xml:str, anzeigefelder:dict) -> None:
+def show_display_fields(marc_xml:str, anzeigefelder:dict = {"ISBN": {"tag": "020", "code": "a"}, "Autor": {"tag": "100", "code": "a"}, "Titel": {"tag": "245", "code": "a"}, "Schlagworte": {"tag": "650", "code": "a"}}) -> None:
     """
     Zeigt die für die Anzeige vorgesehenen Felder für jeden Datensatz aus dem MARC-XML an.
 
     Aufbau des `anzeigefelder`-Dictionaries: {"Feldbezeichnung": {"tag": "XXX", "code": "Y"}, ...} mit `tag` als MARC-Feldnummer und Attribut des <datafield>-Elements und `code` als Unterfeldcode und Attribute des <subfied>-Elements.
 
+    default der `anzeigefelder`: {"Titel": {"tag": "245", "code": "a"}, "Autor": {"tag": "100", "code": "a"}, "ISBN": {"tag": "020", "code": "a"}, "Schlagworte": {"tag": "650", "code": "a"}}
+
     Args:
         marc_xml (str): MARC-XML-String
-        anzeigefelder (dict): Dictionary mit den anzuzeigenden Feldern und deren MARC-Feldnummern und Unterfeldcodes
+        anzeigefelder (dict): Dictionary mit den anzuzeigenden Feldern und deren MARC-Feldnummern und Unterfeldcodes (default s. o.)
 
     Returns:
         None: Ausgabe der gewünschten Felder für jeden Datensatz auf der Konsole
-    """
+    """ 
+    # Counter für Numerieren der angezeigten Ergebnisse
+    counter = 1
 
     # MARC-XML parsen
     root = ET.fromstring(marc_xml)
 
+    # Namespaces im MARC21-XML
     namespaces = {"zs":"http://www.loc.gov/zing/srw/",
                   "marc": "http://www.loc.gov/MARC21/slim"}
-    
+
+    print(f"\nAnzahl der gefundenen Datensätze: {root.find('.//zs:numberOfRecords', namespaces=namespaces).text}\n")
+
+    # Iterieren durch records und auszugebende Felder
     for record in root.findall(".//marc:record", namespaces=namespaces):
+        print(f"{counter}. Treffer:")
+        counter += 1
         for field in anzeigefelder:
            
             tag = anzeigefelder[field]["tag"]
             code = anzeigefelder[field]["code"]
+
+            # Container zum Sammeln von Mehrfachfeldern
             values = []
            
             for datafield in record.findall(f".//marc:datafield[@tag='{tag}']", namespaces=namespaces):
                 subfield_text = datafield.find(f"marc:subfield[@code='{code}']", namespaces=namespaces).text
-                values.append(subfield_text) #TODO: kommen Subfields in einem datafield sicher nur 1x pro code vor?
+                values.append(subfield_text)
 
             # Ausgabe der Inhalte aller datafields/subfields-Textinhalte zum Feld
             print(f"\t{field}: {", ".join(values)}")
@@ -104,20 +110,40 @@ def show_display_fields(marc_xml:str, anzeigefelder:dict) -> None:
         print("\n")
 
 
-
-# TODO:
-# Main: starte Programm -> wonach suchen? -> Suchterme eingeben -> Suche durchführen -> Ergebnisse anzeigen
-
-
 if __name__ == "__main__":
 
+    menu = """
+Bitte Suchfeld auswählen:
+\t1: Titel
+\t2: Autor
+\t3: ISBN
 
-    for field, value in [("pica.tit","Python in a nutshell"), ("dc.author","Martelli, Alex"), ("pica.isb","9798341653597")]:
-        print(f"Suche nach {field}: {value}")
-        
-        xml_string = search_gbv_sru(field, value, maximumRecords=1)
-        
-        show_display_fields(xml_string, anzeigefelder)
-            
+\t0: Programmende\n
+Wahl: """
 
+    # Mapping der Benutzereingaben mit den Suchfeldern der GBV-SRU-Schnittstelle
+    auswahl_mapping = {"1": "pica.tit", "2": "dc.author", "3": "pica.isb"}
+
+    feldauswahl = ""
+
+    while feldauswahl not in ["0", "1", "2", "3"]:
         
+        feldauswahl = input(menu)
+ 
+        if feldauswahl not in ["0", "1", "2", "3"]:
+            print(f"\nFALSCHE EINGABE '{feldauswahl}': Bitte Zahl eines Menüpunktes eingeben.")
+
+        if feldauswahl == "0":
+            print("Programm wird beendet.")
+            sys.exit(0)
+
+    suchfeld = auswahl_mapping[feldauswahl]
+
+    suchterm = None
+
+    while suchterm is None:
+        suchterm = input("Bitte Suchbegriff eingeben: ")
+
+    marc_xml_suchergebnis = search_gbv_sru(suchfeld, suchterm)
+
+    show_display_fields(marc_xml_suchergebnis)
