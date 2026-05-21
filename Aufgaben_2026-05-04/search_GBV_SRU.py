@@ -20,7 +20,9 @@ license: MIT License
 import requests
 import sys
 import xml.etree.ElementTree as ET
+# TODO: lxml statt xml nutzen?
 
+anzeigefelder = {"Titel": {"tag": "245", "code": "a"}, "Autor": {"tag": "100", "code": "a"}, "ISBN": {"tag": "020", "code": "a"}, "Schlagworte": {"tag": "650", "code": "a"}}
 
 
 def search_gbv_sru(
@@ -65,53 +67,42 @@ def search_gbv_sru(
     return response.text
 
 
-# TODO: Funktion als Methode einer MARC21Record-Klasse implementieren, um die Notlösung mit den Tupeln für Marcxml-Record und Namespaces zu vermeiden; ist nicht sehr übersichtlich, aber für die Zwecke dieses Programms ausreichend
-# -> zuerst eine Methode, um einen string zu einem MARC21-XML-Record zu parsen; muss nichts aufregends sein, könnte aber später für Fehlerbehandlung nützlich sein, z. B. um ungültige XML-Strings abzufangen
+def show_display_fields(marc_xml:str, anzeigefelder:dict) -> None:
+    """
+    Zeigt die für die Anzeige vorgesehenen Felder für jeden Datensatz aus dem MARC-XML an.
 
-def parse_marcxml(marcxml_string:str) -> tuple[ET.Element, dict]:
-    """Parst einen MARC21-XML-String und gibt das Wurzelelement zurück.
+    Aufbau des `anzeigefelder`-Dictionaries: {"Feldbezeichnung": {"tag": "XXX", "code": "Y"}, ...} mit `tag` als MARC-Feldnummer und Attribut des <datafield>-Elements und `code` als Unterfeldcode und Attribute des <subfied>-Elements.
 
     Args:
-        marcxml_string (str): Ein String im MARC21-XML-Format
+        marc_xml (str): MARC-XML-String
+        anzeigefelder (dict): Dictionary mit den anzuzeigenden Feldern und deren MARC-Feldnummern und Unterfeldcodes
+
     Returns:
-        Tuple aus:
-            ET.Element: Das Wurzelelement des geparsten MARC21-XML-Strings
-            dict: Ein Dictionary mit den definierten Namespaces für die Suche in den XML-Elementen
+        None: Ausgabe der gewünschten Felder für jeden Datensatz auf der Konsole
     """
-    try:
-        root = ET.fromstring(marcxml_string)
-        # Definiere die Namespaces
-        namespaces = {
-            'zs': 'http://www.loc.gov/zing/srw/',
-            'marc': 'http://www.loc.gov/MARC21/slim'
-        }
-        return (root, namespaces)
+
+    # MARC-XML parsen
+    root = ET.fromstring(marc_xml)
+
+    namespaces = {"zs":"http://www.loc.gov/zing/srw/",
+                  "marc": "http://www.loc.gov/MARC21/slim"}
     
-    except ET.ParseError as e:
-        print(f"Fehler beim Parsen des MARC21-XML-Strings: {e}")
-        sys.exit(1)
+    for record in root.findall(".//marc:record", namespaces=namespaces):
+        for field in anzeigefelder:
+           
+            tag = anzeigefelder[field]["tag"]
+            code = anzeigefelder[field]["code"]
+            values = []
+           
+            for datafield in record.findall(f".//marc:datafield[@tag='{tag}']", namespaces=namespaces):
+                subfield_text = datafield.find(f"marc:subfield[@code='{code}']", namespaces=namespaces).text
+                values.append(subfield_text) #TODO: kommen Subfields in einem datafield sicher nur 1x pro code vor?
 
+            # Ausgabe der Inhalte aller datafields/subfields-Textinhalte zum Feld
+            print(f"\t{field}: {", ".join(values)}")
 
-def get_field_from_marcxml(marc_tuple:tuple, tag:str, code:str) -> list[str]:
-    """Extrahiert die Werte eines bestimmten Feldes aus einem MARC21-XML-Record.
+        print("\n")
 
-    Args:
-        marc_tuple (tuple): Ein Tuple aus einem MARC21-XML-Record als ElementTree-Element und einem Dictionary mit den definierten Namespaces für die Suche in den XML-Elementen
-        tag (str): tag-Attribut für datafield-Element, z. B. 100 für Autor, 245 für Titel, 650 für Schlagworte
-        code (str): code-Attribut für subfield-Element
-
-    Returns:
-        list[str]: Eine Liste von Werten des angegebenen Feldes
-    """
-
-    marcxml = marc_tuple[0]
-    namespaces = marc_tuple[1]
-
-    values = []
-    for datafield in marcxml.findall(f".//marc:datafield[@tag='{tag}']", namespaces=namespaces):
-        for subfield in datafield.findall(f"marc:subfield[@code='{code}']", namespaces=namespaces):
-            values.append(subfield.text)
-    return values
 
 
 # TODO:
@@ -126,18 +117,7 @@ if __name__ == "__main__":
         
         xml_string = search_gbv_sru(field, value, maximumRecords=1)
         
-        marc_tuple = parse_marcxml(xml_string)
-
-        marcxml = marc_tuple[0]
-        namespaces = marc_tuple[1]
-
-        for record in marcxml.findall(".//marc:record", namespaces=namespaces):
-            print(f"ISBN: {", ".join(get_field_from_marcxml(marc_tuple, "020", "a"))}")
-            print(f"Autor: {", ".join(get_field_from_marcxml(marc_tuple, "100", "a"))}")
-            print(f"Titel: {", ".join(get_field_from_marcxml(marc_tuple, "245", "a"))}")
-            print(f"Schlagworte: {", ".join(get_field_from_marcxml(marc_tuple, "650", "a"))}")
-            print("\n")
-
+        show_display_fields(xml_string, anzeigefelder)
             
 
         
