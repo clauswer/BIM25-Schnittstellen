@@ -49,11 +49,17 @@ def search_gbv_sru(
     Returns:
         str: das als `recordSchema` angegebene Ausgabeformat (default MARC21-XML)  
     """
-    
-    gbv_sru_url = f"https://sru.k10plus.de/{database}?version=1.1&operation=searchRetrieve&query={searchField}%3D{searchValue}&maximumRecords={maximumRecords}&recordSchema={recordSchema}"
+
+    params = {"version": "1.1",
+              "operation": "searchRetrieve",
+              "query": f"{searchField}={searchValue}",
+              "maximumRecords": maximumRecords,
+              "recordSchema": recordSchema}
+
+    gbv_sru_url = f"https://sru.k10plus.de/{database}"
 
     try:
-        response = requests.get(gbv_sru_url)
+        response = requests.get(gbv_sru_url, params=params)
     except requests.exceptions as e:
         print(f"Fehler in der Verbindung: {e}")
         sys.exit(1)
