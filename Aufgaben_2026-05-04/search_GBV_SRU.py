@@ -29,7 +29,8 @@ def search_gbv_sru(
         searchValue:str, 
         database="opac-de-627", 
         maximumRecords=20,
-        recordSchema="marcxml"
+        recordSchema="marcxml",
+        debug=False
         ) -> str:
     """Suche nach Datensätzen mit Werten searchValue im Feld searchField. Ausgabe der Ergebnisse als MARC21-XML.
 
@@ -45,10 +46,14 @@ def search_gbv_sru(
         database (str): zu durchsuchende Datenbank (default opac-de-627)
         maximumRecords (int): Maximale Anzahl wiedergegebener Treffer (default 20)
         recordSchema (str): Ausgabeformat (default marcxml)
+        debug (bool): Debug-Ausgabe der tatsächlichen URL (default False)
 
     Returns:
         str: das als `recordSchema` angegebene Ausgabeformat (default MARC21-XML)  
     """
+
+    # Bei der suche Nach Autoren im Schema Nachname, Vorname wird der Name durch das Leerzeichen nach dem Komma nicht erkannt; bei der Suche nach Titeln stört das Leerzeichen zwischen Wörtern nicht. Daher ersetzen von ", " durch "," in searchValue, um die Suche zu ermöglichen.
+    searchValue = searchValue.replace(", ", ",")  
 
     params = {"version": "1.1",
               "operation": "searchRetrieve",
@@ -63,6 +68,9 @@ def search_gbv_sru(
     except requests.exceptions as e:
         print(f"Fehler in der Verbindung: {e}")
         sys.exit(1)
+
+    if debug:
+        print(response.url)  # Debug-Ausgabe der tatsächlichen URL
 
     return response.text
 
@@ -129,7 +137,6 @@ Wahl: """
 
     # Mapping der Benutzereingaben mit den Suchfeldern der GBV-SRU-Schnittstelle
     auswahl_mapping = {"1": "pica.tit", "2": "dc.author", "3": "pica.isb"}
-
     feldauswahl = ""
 
     while feldauswahl not in ["0", "1", "2", "3"]:
@@ -150,6 +157,6 @@ Wahl: """
     while suchterm is None:
         suchterm = input("Bitte Suchbegriff eingeben: ")
 
-    marc_xml_suchergebnis = search_gbv_sru(suchfeld, suchterm)
+    marc_xml_suchergebnis = search_gbv_sru(suchfeld, suchterm, debug=True)
 
     show_display_fields(marc_xml_suchergebnis)
