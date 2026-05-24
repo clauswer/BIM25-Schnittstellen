@@ -125,40 +125,55 @@ def show_display_fields(marc_xml:str, anzeigefelder:dict = {"ISBN": {"tag": ["02
         print("\n")
 
 
-if __name__ == "__main__":
+def choose_search_field(auswahl_mapping:list = [("Titel", "pica.tit"), ("Autor:in", "dc.author"), ("ISBN", "pica.isb")]) -> str:
+    """Ausgabe des Auswahlmenüs auf dem Terminal und Rückgabe des Suchfelds entsprechend der Benutzereingabe.
 
-    menu = """
-Bitte Suchfeld auswählen:
-\t1: Titel
-\t2: Autor
-\t3: ISBN
+    Die Reihenfolge der Felder im auswahl_mapping bestimmt die Nummerierung der Menüoptionen.
+    "0" ist immer die Option zum Beenden des Programms.
 
-\t0: Programmende\n
-Wahl: """
+    default des auswahl_mapping: [("Titel", "pica.tit"), ("Autor:in", "dc.author"), ("ISBN", "pica.isb")]
 
-    # Mapping der Benutzereingaben mit den Suchfeldern der GBV-SRU-Schnittstelle
-    auswahl_mapping = {"1": "pica.tit", "2": "dc.author", "3": "pica.isb"}
-    # TODO: auswahlmapping für Namen der Suchfelder erweitern, um dict auch für Menüerstellung zu verwenden; Schema: [("Feldbezeichnung", "Suchfeld"), ...], Nummer ist Index in Liste + 1
+    Args:
+        auswahl_mapping (list): Liste mit Tupeln aus ("Feldbezeichnung", "Suchfeld"); Suchfeld laut https://sru.k10plus.de/opac-de-627 (default s. o.)
+
+    Returns:
+        str: das vom Benutzer ausgewählte Suchfeld laut https://sru.k10plus.de/opac-de-627
+    """
+
     feldauswahl = ""
 
-    while feldauswahl not in ["0", "1", "2", "3"]:
-        
-        feldauswahl = input(menu)
- 
-        if feldauswahl not in ["0", "1", "2", "3"]:
+    auswahlwerte = [str(i) for i in range(len(auswahl_mapping) + 1)]
+
+    while feldauswahl not in auswahlwerte:
+        print("Bitte Suchfeld auswählen:")
+
+        for index, (feldbezeichnung, suchfeld) in enumerate(auswahl_mapping, start=1):
+            print(f"\t{index}: {feldbezeichnung}")
+
+        print("\n\t0: Programmende\n")
+
+        feldauswahl = input("Wahl: ")
+
+        if feldauswahl not in auswahlwerte:
             print(f"\nFALSCHE EINGABE '{feldauswahl}': Bitte Zahl eines Menüpunktes eingeben.")
 
         if feldauswahl == "0":
             print("Programm wird beendet.")
             sys.exit(0)
 
-    suchfeld = auswahl_mapping[feldauswahl]
+    return auswahl_mapping[int(feldauswahl) - 1][1]  # Rückgabe des Suchfelds entsprechend der Benutzereingabe
 
-    suchterm = None
 
-    while suchterm is None:
-        suchterm = input("Bitte Suchbegriff eingeben: ")
+if __name__ == "__main__":
 
-    marc_xml_suchergebnis = search_gbv_sru(suchfeld, suchterm, debug=True)
+    # Suchfeld bestimmen
+    suchfeld = choose_search_field()
 
+    # Suchterm bestimmen
+    suchterm = input("Bitte Suchbegriff eingeben: ")
+
+    # Suche durchführen
+    marc_xml_suchergebnis = search_gbv_sru(suchfeld, suchterm, debug=False)
+
+    # Ergebnisse anzeigen
     show_display_fields(marc_xml_suchergebnis)
