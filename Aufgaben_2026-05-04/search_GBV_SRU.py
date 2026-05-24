@@ -15,8 +15,8 @@ ISBN, Autor, Titel, Schlagworte
 
 authors: Beata Lakenberg, Sebastian Scherübl, Claus Werner
 license: MIT License
-version: 0.9
-date: 2026-05-04
+version: 1.0
+date: 2026-05-24
 """
 
 import requests
@@ -34,7 +34,7 @@ def search_gbv_sru(
         ) -> str:
     """Suche nach Datensätzen mit Werten searchValue im Feld searchField. Ausgabe der Ergebnisse als MARC21-XML.
 
-    Für die Dokumentation der GBV-SRU-Schnittstelle nud erlaubten Werten zu den einzelnen Parametern vgl.:
+    Für die Dokumentation der GBV-SRU-Schnittstelle und erlaubten Werten zu den einzelnen Parametern vgl.:
     - für `searchField`: die SRU-Explain-Record der entspr. Datenbank, z. B. https://sru.k10plus.de/opac-de-627
     - für `database`: https://wiki.k10plus.de/spaces/K10PLUS/pages/27361342/SRU#SRU-Datenbanken 
     - für `maximumRecords`:  https://wiki.k10plus.de/spaces/K10PLUS/pages/27361342/SRU#SRU-Suchabfrage 
@@ -52,7 +52,7 @@ def search_gbv_sru(
         str: das als `recordSchema` angegebene Ausgabeformat (default MARC21-XML)  
     """
 
-    # Bei der suche Nach Autoren im Schema Nachname, Vorname wird der Name durch das Leerzeichen nach dem Komma nicht erkannt; bei der Suche nach Titeln stört das Leerzeichen zwischen Wörtern nicht. Daher ersetzen von ", " durch "," in searchValue, um die Suche zu ermöglichen.
+    # Bei der suche Nach Autoren im Schema Nachname, Vorname wird der Name durch das Leerzeichen nach dem Komma nicht erkannt; bei der Suche nach Titeln stört das Leerzeichen zwischen Wörtern nicht. Daher ersetzen von ", " durch "," in searchValue, um die Autoren-Suche zu ermöglichen.
     searchValue = searchValue.replace(", ", ",")  
 
     params = {"version": "1.1",
@@ -78,21 +78,35 @@ def search_gbv_sru(
     return response.text
 
 
-def show_display_fields(marc_xml:str, anzeigefelder:dict = {"ISBN": {"tag": ["020"], "code": ["a"]}, "Autor": {"tag": ["100"], "code": ["a"]}, "Titel": {"tag": ["245"], "code": ["a", "b"]}, "Schlagworte": {"tag": ["650", "689"], "code": ["a"]}}) -> None:
+def show_display_fields(
+        marc_xml:str, 
+        anzeigefelder:dict = {
+            "ISBN": {"tag": ["020"], "code": ["a"]}, 
+            "Autor": {"tag": ["100"], "code": ["a"]}, 
+            "Titel": {"tag": ["245"], "code": ["a", "b"]}, 
+            "Schlagworte": {"tag": ["650", "689"], "code": ["a"]}
+            }
+        ) -> None:
     """
     Zeigt die für die Anzeige vorgesehenen Felder für jeden Datensatz aus dem MARC-XML an.
 
-    Aufbau des `anzeigefelder`-Dictionaries: {"Feldbezeichnung": {"tag": ["XXX"], "code": "Y"}, ...} mit `tag` als MARC-Feldnummer und Attribut des <datafield>-Elements und `code` als Unterfeldcode und Attribute des <subfied>-Elements.
+    Aufbau des `anzeigefelder`-Dictionaries: {"Feldbezeichnung": {"tag": ["XXX"], "code": ["Y"]}, ...} mit `tag` als MARC-Feldnummer und Attribut des <datafield>-Elements und `code` als Unterfeldcode und Attribute des <subfied>-Elements.
 
-    default der `anzeigefelder`: {"ISBN": {"tag": ["020"], "code": "a"}, "Autor": {"tag": ["100"], "code": "a"}, "Titel": {"tag": ["245"], "code": "a"}, "Schlagworte": {"tag": ["650"], "code": "a"}}
+    default der `anzeigefelder`: {
+            "ISBN": {"tag": ["020"], "code": ["a"]}, 
+            "Autor": {"tag": ["100"], "code": ["a"]}, 
+            "Titel": {"tag": ["245"], "code": ["a", "b"]}, 
+            "Schlagworte": {"tag": ["650", "689"], "code": ["a"]}
+            }
 
     Args:
         marc_xml (str): MARC-XML-String
-        anzeigefelder (dict): Dictionary mit den anzuzeigenden Feldern und deren MARC-Feldnummern und Unterfeldcodes (default s. o.)
+        anzeigefelder (dict): Dictionary mit den anzuzeigenden Feldern und deren MARC-Feldnummern und Unterfeldcodes jeweils in Listen (default s. o.)
 
     Returns:
-        None: Ausgabe der gewünschten Felder für jeden Datensatz auf der Konsole
+        None: Ausgabe der gewünschten Felder und Feldinhalte für jeden Datensatz auf der Konsole
     """ 
+
     # Counter für Numerieren der angezeigten Ergebnisse
     counter = 1
 
@@ -125,7 +139,9 @@ def show_display_fields(marc_xml:str, anzeigefelder:dict = {"ISBN": {"tag": ["02
         print("\n")
 
 
-def choose_search_field(auswahl_mapping:list = [("Titel", "pica.tit"), ("Autor:in", "dc.author"), ("ISBN", "pica.isb")]) -> str:
+def choose_search_field(
+        auswahl_mapping:list = [("Titel", "pica.tit"), ("Autor:in", "dc.author"), ("ISBN", "pica.isb")]
+        ) -> str:
     """Ausgabe des Auswahlmenüs auf dem Terminal und Rückgabe des Suchfelds entsprechend der Benutzereingabe.
 
     Die Reihenfolge der Felder im auswahl_mapping bestimmt die Nummerierung der Menüoptionen.
