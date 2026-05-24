@@ -107,9 +107,6 @@ def show_display_fields(
         None: Ausgabe der gewünschten Felder und Feldinhalte für jeden Datensatz auf der Konsole
     """ 
 
-    # Counter für Numerieren der angezeigten Ergebnisse
-    counter = 1
-
     # MARC-XML parsen
     root = ET.fromstring(marc_xml)
 
@@ -120,9 +117,8 @@ def show_display_fields(
     print(f"\nAnzahl der gefundenen Datensätze: {root.find('.//zs:numberOfRecords', namespaces=namespaces).text}\n")
 
     # Iterieren durch records und auszugebende Felder
-    for record in root.findall(".//marc:record", namespaces=namespaces):
-        print(f"{counter}. Treffer:")
-        counter += 1
+    for index, record in enumerate(root.findall(".//marc:record", namespaces=namespaces)):
+        print(f"{index + 1}. Treffer:")
         for field in anzeigefelder:
 
             # Container zum Sammeln von Mehrfachfeldern
