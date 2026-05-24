@@ -84,7 +84,7 @@ def print_availability(ppn:str) -> None:
         try:
             print("\nVerfügbarkeit von:", document["about"], "\n")
         except KeyError:
-            print("\nVerfügbarkeit von:", document["id"] "\n")
+            print("\nVerfügbarkeit von:", document["id"], "\n")
 
         availability_dict = count_availability(document)
 
