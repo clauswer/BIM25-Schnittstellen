@@ -72,16 +72,19 @@ def search_gbv_sru(
     if debug:
         print(response.url)  # Debug-Ausgabe der tatsächlichen URL
 
+    # Sicherstellen, dass die Antwort als UTF-8 dekodiert wird
+    response.encoding = response.apparent_encoding  
+
     return response.text
 
 
-def show_display_fields(marc_xml:str, anzeigefelder:dict = {"ISBN": {"tag": "020", "code": "a"}, "Autor": {"tag": "100", "code": "a"}, "Titel": {"tag": "245", "code": "a"}, "Schlagworte": {"tag": "650", "code": "a"}}) -> None:
+def show_display_fields(marc_xml:str, anzeigefelder:dict = {"ISBN": {"tag": ["020"], "code": ["a"]}, "Autor": {"tag": ["100"], "code": ["a"]}, "Titel": {"tag": ["245"], "code": ["a", "b"]}, "Schlagworte": {"tag": ["650", "689"], "code": ["a"]}}) -> None:
     """
     Zeigt die für die Anzeige vorgesehenen Felder für jeden Datensatz aus dem MARC-XML an.
 
-    Aufbau des `anzeigefelder`-Dictionaries: {"Feldbezeichnung": {"tag": "XXX", "code": "Y"}, ...} mit `tag` als MARC-Feldnummer und Attribut des <datafield>-Elements und `code` als Unterfeldcode und Attribute des <subfied>-Elements.
+    Aufbau des `anzeigefelder`-Dictionaries: {"Feldbezeichnung": {"tag": ["XXX"], "code": "Y"}, ...} mit `tag` als MARC-Feldnummer und Attribut des <datafield>-Elements und `code` als Unterfeldcode und Attribute des <subfied>-Elements.
 
-    default der `anzeigefelder`: {"Titel": {"tag": "245", "code": "a"}, "Autor": {"tag": "100", "code": "a"}, "ISBN": {"tag": "020", "code": "a"}, "Schlagworte": {"tag": "650", "code": "a"}}
+    default der `anzeigefelder`: {"ISBN": {"tag": ["020"], "code": "a"}, "Autor": {"tag": ["100"], "code": "a"}, "Titel": {"tag": ["245"], "code": "a"}, "Schlagworte": {"tag": ["650"], "code": "a"}}
 
     Args:
         marc_xml (str): MARC-XML-String
@@ -107,16 +110,14 @@ def show_display_fields(marc_xml:str, anzeigefelder:dict = {"ISBN": {"tag": "020
         print(f"{counter}. Treffer:")
         counter += 1
         for field in anzeigefelder:
-           
-            tag = anzeigefelder[field]["tag"]
-            code = anzeigefelder[field]["code"]
 
             # Container zum Sammeln von Mehrfachfeldern
             values = []
-           
-            for datafield in record.findall(f".//marc:datafield[@tag='{tag}']", namespaces=namespaces):
-                subfield_text = datafield.find(f"marc:subfield[@code='{code}']", namespaces=namespaces).text
-                values.append(subfield_text)
+
+            for tag in anzeigefelder[field]["tag"]:
+                for code in anzeigefelder[field]["code"]:
+                    for value in record.findall(f".//marc:datafield[@tag='{tag}']/marc:subfield[@code='{code}']", namespaces=namespaces):
+                        values.append(value.text)
 
             # Ausgabe der Inhalte aller datafields/subfields-Textinhalte zum Feld
             print(f"\t{field}: {", ".join(values)}")
@@ -137,6 +138,7 @@ Wahl: """
 
     # Mapping der Benutzereingaben mit den Suchfeldern der GBV-SRU-Schnittstelle
     auswahl_mapping = {"1": "pica.tit", "2": "dc.author", "3": "pica.isb"}
+    # TODO: auswahlmapping für Namen der Suchfelder erweitern, um dict auch für Menüerstellung zu verwenden; Schema: [("Feldbezeichnung", "Suchfeld"), ...], Nummer ist Index in Liste + 1
     feldauswahl = ""
 
     while feldauswahl not in ["0", "1", "2", "3"]:
