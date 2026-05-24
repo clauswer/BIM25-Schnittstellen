@@ -53,7 +53,7 @@ def count_availability(daia_document_json:dict) -> dict:
     Gibt die Anzahl der verfügbaren Exemplare je Service (vgl. https://gbv.github.io/daia/daia.html#services) zurück.
 
     Args:
-        daia_document_json (dict): ein document-Object aus der DAIA-Antwort als JSON-Dictionary
+        daia_document_json (dict): ein document-Object (vgl. dazu https://gbv.github.io/daia/daia.html#documents) aus der DAIA-Antwort als JSON-Dictionary
     Returns:
         dict: Ein Dictionary mit der Anzahl der verfügbaren Exemplare pro Service.
     """
@@ -81,14 +81,15 @@ def print_availability(ppn:str) -> None:
 
 
     for document in daia_json["document"]:
-        print("\nVerfügbarkeit von:", document["about"], "\n")
+        try:
+            print("\nVerfügbarkeit von:", document["about"], "\n")
+        except KeyError:
+            print("\nVerfügbarkeit von:", document["id"] "\n")
 
         availability_dict = count_availability(document)
 
         for service in availability_dict:
             print(service, ": ", availability_dict[service])
-
-# TODO: Ausgabe der Verfügbarkeit je document -> count_availability greift innerhalb der for-schleife mit document auf item zu!
 
 
 if __name__ == "__main__":
