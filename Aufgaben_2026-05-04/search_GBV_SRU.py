@@ -24,7 +24,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 
-def search_gbv_sru(
+def get_gbv_sru(
         searchField:str, 
         searchValue:str, 
         database="opac-de-627", 
@@ -65,8 +65,8 @@ def search_gbv_sru(
 
     try:
         response = requests.get(gbv_sru_url, params=params)
-    except requests.exceptions as e:
-        print(f"Fehler in der Verbindung: {e}")
+    except Exception as e:
+        print(f"\nFehler in der Verbindung:\n{e}")
         sys.exit(1)
 
     if debug:
@@ -107,6 +107,9 @@ def show_display_fields(
         None: Ausgabe der gewünschten Felder und Feldinhalte für jeden Datensatz auf der Konsole
     """ 
 
+    # Prüfen auf Fehlermeldungen in SRU-Antwort
+    print_sru_diagnostics(marc_xml)
+
     # MARC-XML parsen
     root = ET.fromstring(marc_xml)
 
@@ -130,7 +133,7 @@ def show_display_fields(
                         values.append(value.text)
 
             # Ausgabe der Inhalte aller datafields/subfields-Textinhalte zum Feld
-            print(f"\t{field}: {", ".join(values)}")
+            print(f"\t{field}: {"; ".join(values)}")
 
         print("\n")
 
@@ -167,7 +170,7 @@ def choose_search_field(
         feldauswahl = input("Wahl: ")
 
         if feldauswahl not in auswahlwerte:
-            print(f"\nFALSCHE EINGABE '{feldauswahl}': Bitte Zahl eines Menüpunktes eingeben.")
+            print(f"\nFALSCHE EINGABE '{feldauswahl}': Bitte Zahl eines Menüpunktes eingeben.\n")
 
         if feldauswahl == "0":
             print("Programm wird beendet.")
@@ -175,6 +178,43 @@ def choose_search_field(
 
     return auswahl_mapping[int(feldauswahl) - 1][1]  # Rückgabe des Suchfelds entsprechend der Benutzereingabe
 
+
+def print_sru_diagnostics(xml:str) -> None:
+    """Gibt die SRU-Diagnoseinformationen aus einer SRU-Antwort auf der Konsole aus.
+    Beendet das Programm, wenn Fehler in der SRU-Antwort vorhanden sind.
+
+    Args:
+        xml (str): SRU-Antwort als XML-String
+
+    Returns:
+        None
+    """
+    root = ET.fromstring(xml)
+
+    # Namespaces im MARC21-XML
+    namespaces = {"zs":"http://www.loc.gov/zing/srw/",
+                  "marc": "http://www.loc.gov/MARC21/slim",
+                  "diag": "http://www.loc.gov/zing/srw/diagnostic/"}
+    
+    # Fehler aus SRU-Diagnostic ausgeben, falls vorhanden
+    if root.find(".//zs:diagnostics", namespaces=namespaces) is not None:
+        count_fehler = len(root.findall(".//diag:diagnostic", namespaces=namespaces))
+        query = root.find(".//zs:query", namespaces=namespaces)
+        if query is not None:
+            print(f"\nACHTUNG: {count_fehler} Fehler bei SRU-Abfrage: '{query.text}'")
+        else :
+            print(f"\nACHTUNG: {count_fehler} Fehler bei SRU-Abfrage")
+
+        # Finden aller diagnostic-Elemente und Ausgabe von Tag und Text der Kind-Elemente
+        for index, diagnostic in enumerate(root.findall(".//diag:diagnostic", namespaces=namespaces)):
+            print(f"\n{index+1}. Fehler:")
+            for child in diagnostic:
+                print(f"\t{child.tag.split('}')[1]}: {child.text}")
+        
+    # Programm beenden wenn Fehler vorhanden
+        print("\nProgramm beendet")
+        sys.exit(1)
+    
 
 if __name__ == "__main__":
 
@@ -185,7 +225,16 @@ if __name__ == "__main__":
     suchterm = input("Bitte Suchbegriff eingeben: ")
 
     # Suche durchführen
-    marc_xml_suchergebnis = search_gbv_sru(suchfeld, suchterm, debug=False)
+    marc_xml_suchergebnis = get_gbv_sru(suchfeld, suchterm, debug=True)
 
     # Ergebnisse anzeigen
-    show_display_fields(marc_xml_suchergebnis)
+    show_display_fields(
+        marc_xml_suchergebnis, 
+        anzeigefelder={
+            "ISBN": {"tag": ["020"], "code": ["a"]}, 
+            "Autor:in": {"tag": ["100"], "code": ["a"]},
+            "beteiligte Personen": {"tag": ["700"], "code": ["a"]},
+            "Titel": {"tag": ["245"], "code": ["a", "b"]}, 
+            "Schlagworte": {"tag": ["650", "689"], "code": ["a"]},
+            }
+        )
