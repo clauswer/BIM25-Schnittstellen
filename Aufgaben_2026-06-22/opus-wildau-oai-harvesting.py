@@ -400,6 +400,7 @@ def main() -> None:
     parser.add_argument("-u", "--until_date", type=str, help="Enddatum im Format YYYY-MM-DD")
     parser.add_argument("--url", type=str, default="https://opus4.kobv.de/opus4-th-wildau/oai", help="OPUS OAI URL (default: https://opus4.kobv.de/opus4-th-wildau/oai)")
     parser.add_argument("--format", type=str, default="oai_dc", choices=["oai_dc", "marc21", "epicur", "xMetaDissPlus"], help="Metadatenformat für Ausgabe (default: oai_dc)")
+    parser.add_argument("--filename", type=str, help="Dateiname zum Sichern der Harvesting-Ergebnisse.")
 
     args = parser.parse_args()
 
@@ -453,8 +454,12 @@ def main() -> None:
 
     harvesting = Document_harvester(from_date, until_date, args.format, args.url)
     print(f"Abfrage-URL:\n{harvesting.querystring}")
-    #harvesting.fetch()
-    harvesting.write("test.xml")
+
+    if args.filename: 
+        filename = args.filename
+    else:
+        filename = "test.xml"
+    harvesting.write(filename)
 
 if __name__ == "__main__":
     main()
