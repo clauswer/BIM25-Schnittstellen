@@ -263,6 +263,8 @@ class Document_harvester:
             print(response.content)
             sys.exit(1)
 
+        self._check_oai_pmh_error(response.content)
+
         return response.content
     
 
