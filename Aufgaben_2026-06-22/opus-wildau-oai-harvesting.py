@@ -242,6 +242,8 @@ class Document_harvester:
         Abfrage an die OAI-PMH-Schnittstelle via URL.
 
         _fetch() ruft den querystring auf und gibt den request.content als string zurück.
+
+        Sollte ein error-Element enthalten sein, wird die error-Meldung auf dem Terminal ausgegeben und das Programm beendet.
     
         Parameter:
             parameter (dict): Paramtere für die Abfrage an die OAI-PMH-Schnittstelle
